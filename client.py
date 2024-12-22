@@ -12,22 +12,20 @@ class FederatedClient(fl.client.NumPyClient):
         self.x_test = x_test
         self.y_test = y_test
 
-    def get_parameters(self):
-        # Return model parameters
-        return [val for _, val in self.model.get_params().items()]
+    def get_parameters(self, config):
+        # Return model weights (coefficients and intercept)
+        return [self.model.coef_, self.model.intercept_]
 
     def set_parameters(self, parameters):
-        # Set model parameters
-        param_dict = {
-            key: val for key, val in zip(self.model.get_params().keys(), parameters)
-        }
-        self.model.set_params(**param_dict)
+        # Set model weights (coefficients and intercept)
+        self.model.coef_ = parameters[0]
+        self.model.intercept_ = parameters[1]
 
     def fit(self, parameters, config):
         # Set model parameters and train
         self.set_parameters(parameters)
         self.model.fit(self.x_train, self.y_train)
-        return self.get_parameters(), len(self.x_train), {}
+        return self.get_parameters(config), len(self.x_train), {}
 
     def evaluate(self, parameters, config):
         # Set model parameters and evaluate
@@ -45,8 +43,9 @@ def start_client():
         data.data, data.target, test_size=0.2, random_state=42
     )
 
-    # Create model
+    # Create model and initialize coefficients
     model = LogisticRegression(max_iter=100)
+    model.fit([[0, 0, 0, 0]], [0])  # Dummy training to initialize weights
 
     # Start Flower client
     client = FederatedClient(model, x_train, y_train, x_test, y_test)
